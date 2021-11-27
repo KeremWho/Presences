@@ -5,13 +5,12 @@ const matrixPresence = new Presence({
 
 matrixPresence.on("UpdateData", async () => {
   const matrixPData: PresenceData = {
-      largeImageKey: "logo"
+      largeImageKey: "logo",
+      startTimestamp: matrixBrowsing
     },
     matrixPage = window.location.pathname;
 
-  matrixPData.startTimestamp = matrixBrowsing;
-
-  if (matrixPage == "/") {
+  if (matrixPage === "/") {
     matrixPData.details = "Browsing";
     matrixPData.smallImageKey = "browsing";
     matrixPData.smallImageText = "Browsing Bots";
@@ -33,20 +32,27 @@ matrixPresence.on("UpdateData", async () => {
     matrixPData.state = bot;
     matrixPData.smallImageText = "Browsing Bot";
     matrixPData.smallImageKey = "browsing";
-  } else if (matrixPage == "/me") {
+  } else if (matrixPage === "/me") {
     const username: string = document.getElementsByTagName("h1")[0].innerHTML;
     matrixPData.details = "Watching Profile:";
     matrixPData.state = username;
-  } else if (matrixPage == "/add") {
+  } else if (matrixPage === "/add") {
     matrixPData.details = "Adding Bot";
     matrixPData.smallImageKey = "writing";
     matrixPData.smallImageText = "Writing Text";
+  } else if (matrixPage === "/staff") {
+    matrixPData.details = "Viewing:";
+    matrixPData.state = "Staff Page";
+  } else if (matrixPage === "/admin") {
+    matrixPData.details = "Viewing:";
+    matrixPData.state = "Admin Page";
+  } else if (matrixPage.includes("/api")) {
+    matrixPData.details = "Viewing:";
+    matrixPData.state = "API";
   }
 
-  if (matrixPData.details == null) {
+  if (!matrixPData.details) {
     matrixPresence.setTrayTitle();
     matrixPresence.setActivity();
-  } else {
-    matrixPresence.setActivity(matrixPData);
-  }
+  } else matrixPresence.setActivity(matrixPData);
 });

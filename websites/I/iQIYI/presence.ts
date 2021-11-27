@@ -1,18 +1,7 @@
-interface LangStrings {
-  play: string;
-  pause: string;
-  episode: string;
-  browse: string;
-  searchFor: string;
-  watchVideo: string;
-  watchEpisode: string;
-  watchMovie: string;
-}
-
 const presence = new Presence({
     clientId: "809748404963770398"
   }),
-  getStrings = async (): Promise<LangStrings> =>
+  getStrings = async () =>
     presence.getStrings(
       {
         play: "general.playing",
@@ -22,35 +11,49 @@ const presence = new Presence({
         searchFor: "general.searchFor",
         watchVideo: "general.buttonWatchVideo",
         watchMovie: "general.buttonViewMovie",
-        watchEpisode: "general.buttonViewEpisode"
+        watchEpisode: "general.buttonViewEpisode",
+        browsingThrough: "discord.browseThrough",
+        viewingSettings: "discord.settings",
+        viewingHistory: "amazon.history",
+        viewingList: "netflix.viewList",
+        viewAccount: "general.viewAccount",
+        viewPage: "general.viewPage"
       },
-      await presence.getSetting("lang")
+      await presence.getSetting("lang").catch(() => "en")
     ),
   browsingStamp = Math.floor(Date.now() / 1000);
 
-let strings: Promise<LangStrings> = getStrings(),
+let strings = getStrings(),
   oldLang: string = null;
 
 presence.on("UpdateData", async () => {
-  const presenceData: PresenceData = {
-      largeImageKey: "iqiyi_logo",
-      details: (await strings).browse,
-      smallImageKey: "search",
-      smallImageText: (await strings).browse,
-      startTimestamp: browsingStamp
-    },
-    newLang = await presence.getSetting("lang"),
+  const newLang = await presence.getSetting("lang").catch(() => "en"),
     showButtons: boolean = await presence.getSetting("buttons"),
     searchQuery: boolean = await presence.getSetting("searchQuery");
 
-  if (!oldLang) {
-    oldLang = newLang;
-  } else if (oldLang !== newLang) {
+  oldLang ??= newLang;
+  if (oldLang !== newLang) {
     oldLang = newLang;
     strings = getStrings();
   }
 
-  if (
+  const presenceData: PresenceData = {
+    largeImageKey: ["iqiyi_logo_b", "iqiyi_logo"][
+      await presence.getSetting("logo")
+    ],
+    details: (await strings).browse,
+    smallImageKey: "search",
+    startTimestamp: browsingStamp
+  };
+
+  if (document.location.pathname === "/") {
+    const category = Object.values(document.querySelectorAll("div")).filter(
+      (entry) => entry?.className === "row-title" && isVisible(entry)
+    )[0]?.textContent;
+
+    presenceData.details = (await strings).browsingThrough;
+    presenceData.state = category || "Home page";
+  } else if (
     document.location.pathname.includes("/play") ||
     document.location.pathname.includes("/intl-common/")
   ) {
@@ -70,48 +73,54 @@ presence.on("UpdateData", async () => {
         JSON.parse(
           document.querySelectorAll('script[type="application/ld+json"]')[1]
             ?.innerHTML || "{}"
-        )[0]?.itemListElement[0]?.item ?? document.URL,
+        )[0]
+          ?.itemListElement.map(
+            (x: {
+              item: {
+                "@id": string;
+                name: string;
+              };
+            }) => `${x.item.name.toLowerCase()} ${x.item["@id"]}`
+          )
+          .join(" ") ?? "",
       video: HTMLVideoElement = document.querySelector("video"),
       isMovie = URLItem.includes("movie"),
       isVShow = URLItem.includes("variety-show"),
-      isVShowToo = document.location.pathname.includes("/intl-common/"),
-      isTrial =
-        document.querySelector(
-          ".iqp-player-g.iqp-player .iqp-tip-stream .iqp-txt-vip"
-        )?.textContent !== undefined,
+      possiblyVShow = document.location.pathname.includes("/intl-common/"),
+      isTrial = document.querySelector(
+        ".iqp-player-g.iqp-player .iqp-tip-stream .iqp-txt-vip"
+      )?.textContent,
       lastestEp: string[] = document
         .querySelector("div.broken-line")
         ?.nextSibling?.nextSibling?.nextSibling?.textContent?.match(
-          /[1-9]?[0-9]?[0-9]/g
+          /[1-9][0-9]?[0-9]?/g
         ),
-      contentEp: string[] = isVShowToo
-        ? data.ep.match(/([1-9]?[0-9]?[0-9]? ?\([1-9]?[0-9]\))/g)
-        : data.ep.match(/[1-9]?[0-9]?[0-9]/g),
+      contentEp: string[] = possiblyVShow
+        ? data.ep.match(/([1-9][0-9]?[0-9]? ?\([1-9][0-9]?\))/g)
+        : data.ep.match(/[1-9][0-9]?[0-9]?/g),
       isPreview =
-        lastestEp && contentEp && !isVShow && !isVShowToo
+        lastestEp && contentEp && !isVShow && !possiblyVShow
           ? parseInt(contentEp[0], 10) > parseInt(lastestEp[0], 10)
           : data.ep.toLowerCase().includes("preview");
 
     if (!data.ep && !isVShow && isMovie) data.ep = "Movie";
-    if (isVShowToo) {
+    if (possiblyVShow) {
       if (contentEp?.length) {
         data.ep = `${(await strings).episode} ${
           contentEp[0].match(/.+?(?=\()/g)[0]
         } ${
           contentEp[0].includes("(")
-            ? `- ${contentEp[0].match(/(\([1-9]?[0-9]\))/g)[0]}`
+            ? `- ${contentEp[0].match(/(\([1-9][0-9]?\))/g)[0]}`
             : "Variety show"
         }`;
-      } else {
-        data.ep = `Variety show`;
-      }
+      } else data.ep = "Variety show";
 
-      data.title = data.title.match(/.+?(?=\s{2})/g)[0];
+      [data.title] = data.title.match(/.+?(?=\s{2})/g) || [null];
     }
-    if (isVShow && !isVShowToo) data.ep = "Variety show";
-    if (!isVShow && !isVShowToo && !isMovie && contentEp !== null)
+    if (isVShow && !possiblyVShow) data.ep = "Variety show";
+    if (!isVShow && !possiblyVShow && !isMovie && contentEp !== null)
       data.ep = `${(await strings).episode} ${contentEp[0]}`;
-    else if (!isVShow && !isVShowToo && !isMovie) data.ep = "Highlight";
+    else if (!isVShow && !possiblyVShow && !isMovie) data.ep = "Highlight";
 
     if (isTrial && !isPreview) data.ep = `${data.ep} (Trial)`;
 
@@ -130,8 +139,7 @@ presence.on("UpdateData", async () => {
         ? (await strings).pause
         : (await strings).play;
 
-      presenceData.startTimestamp = timestamps[0];
-      presenceData.endTimestamp = timestamps[1];
+      presenceData.endTimestamp = timestamps.pop();
 
       if (showButtons) {
         presenceData.buttons = [
@@ -152,7 +160,7 @@ presence.on("UpdateData", async () => {
         delete presenceData.startTimestamp;
         delete presenceData.endTimestamp;
       }
-    } else {
+    } else if (data.title) {
       presenceData.details = "Looking at:";
       presenceData.state = data.title;
       presenceData.startTimestamp = browsingStamp;
@@ -163,7 +171,7 @@ presence.on("UpdateData", async () => {
       ),
       result = document
         .querySelector("div.has-result")
-        ?.textContent.match(/[0-9]?[0-9]?[0-9]?[0-9]/)[0];
+        ?.textContent.match(/[0-9][0-9]?[0-9]?[0-9]?/)[0];
 
     presenceData.details = `${(await strings).searchFor} ${
       searchQuery ? searchQuery_ : "( Hidden )"
@@ -175,10 +183,62 @@ presence.on("UpdateData", async () => {
       presenceData.state = `${result} matching ${
         parseInt(result, 10) > 1 ? "results" : "result"
       }`;
-    } else {
-      presenceData.state = `No matching result`;
+    } else presenceData.state = "No matching result";
+  } else if (document.location.pathname.includes("/personal")) {
+    const type = new URLSearchParams(document.location.search).get("type"),
+      all = document.querySelector(
+        "div.trans-contributions-detail > span:nth-child(1) > i"
+      )?.textContent,
+      passed = document.querySelector(
+        "div.trans-contributions-detail > span:nth-child(2) > i"
+      )?.textContent,
+      adopted = document.querySelector(
+        "div.trans-contributions-detail > span:nth-child(3) > i"
+      )?.textContent;
+
+    switch (type) {
+      case "settings":
+        presenceData.details = (await strings).viewingSettings;
+        break;
+
+      case "history":
+        presenceData.details = (await strings).viewingHistory;
+        break;
+
+      case "favorite":
+        presenceData.details = (await strings).viewingList;
+        break;
+
+      case "translation":
+        presenceData.details = "Viewing their subtitle translation";
+        presenceData.state = `All: ${all} • Passed: ${passed} • Adopted: ${adopted}`;
+        break;
+
+      default:
+        presenceData.details = (await strings).viewAccount;
+        break;
     }
+  } else if (document.location.pathname.includes("/vip/")) {
+    presenceData.details = (await strings).viewPage;
+    presenceData.state = "VIP membership";
   }
 
   presence.setActivity(presenceData);
 });
+
+/**
+ * Check whether the given `Element` is visible.
+ * @param Element
+ */
+
+function isVisible(element: HTMLElement) {
+  const clientRect = element.getBoundingClientRect();
+  return (
+    clientRect.top >= 0 &&
+    clientRect.left >= 0 &&
+    clientRect.bottom <=
+      (window.innerHeight || document.documentElement.clientHeight) &&
+    clientRect.right <=
+      (window.innerWidth || document.documentElement.clientWidth)
+  );
+}

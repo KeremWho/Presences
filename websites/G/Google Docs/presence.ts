@@ -21,7 +21,7 @@ async function getStrings() {
       browsingPresentation: "google docs.browsingPresentation",
       vieiwngPresentation: "google docs.viewingPresentation"
     },
-    await presence.getSetting("lang")
+    await presence.getSetting("lang").catch(() => "en")
   );
 }
 
@@ -33,68 +33,54 @@ presence.on("UpdateData", async () => {
       startTimestamp: browsingStamp
     },
     privacy = await presence.getSetting("privacy"),
-    newLang = await presence.getSetting("lang");
+    newLang = await presence.getSetting("lang").catch(() => "en");
 
-  if (!oldLang) {
-    oldLang = newLang;
-  } else if (oldLang !== newLang) {
+  oldLang ??= newLang;
+  if (oldLang !== newLang) {
     oldLang = newLang;
     strings = getStrings();
   }
 
+  title = document.title
+    .replace("- Google Docs", "")
+    .replace("- Google Forms", "")
+    .replace("- Google Sheets", "")
+    .replace("- Google Slides", "");
+
   if (document.location.pathname.includes("/document")) {
     presenceData.largeImageKey = "docslogo";
-    title = document.title.replace("- Google Docs", "");
-    if (document.location.pathname.includes("/edit")) {
+    if (document.location.pathname.includes("/edit"))
       presenceData.details = (await strings).editingDoc;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/document/u/")) {
+    else if (document.location.pathname.includes("/document/u/"))
       presenceData.details = (await strings).browsingDoc;
-    } else {
-      presenceData.details = (await strings).viewingDoc;
-      if (!privacy) presenceData.state = title;
-    }
+    else presenceData.details = (await strings).viewingDoc;
   } else if (document.location.pathname.includes("/forms/")) {
     presenceData.largeImageKey = "formslogo";
-    title = document.title.replace("- Google Forms", "");
-    if (document.location.pathname.includes("/edit")) {
+    if (document.location.pathname.includes("/edit"))
       presenceData.details = (await strings).editingForm;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/forms/u/")) {
+    else if (document.location.pathname.includes("/forms/u/"))
       presenceData.details = (await strings).browsingForm;
-    } else {
-      presenceData.details = (await strings).viewingForm;
-      if (!privacy) presenceData.state = title;
-    }
+    else presenceData.details = (await strings).viewingForm;
   } else if (document.location.pathname.includes("/spreadsheets")) {
     presenceData.largeImageKey = "sheetslogo";
-    title = document.title.replace("- Google Sheets", "");
-    if (document.location.pathname.includes("/edit")) {
+    if (document.location.pathname.includes("/edit"))
       presenceData.details = (await strings).editingSheet;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/spreadsheets/u/")) {
+    else if (document.location.pathname.includes("/spreadsheets/u/"))
       presenceData.details = (await strings).browsingSheet;
-    } else {
-      presenceData.details = (await strings).viewingSheet;
-      if (!privacy) presenceData.state = title;
-    }
+    else presenceData.details = (await strings).viewingSheet;
   } else if (document.location.pathname.includes("/presentation/")) {
     presenceData.largeImageKey = "slideslogo";
-    title = document.title.replace("- Google Slides", "");
-    if (document.location.pathname.includes("/edit")) {
+    if (document.location.pathname.includes("/edit"))
       presenceData.details = (await strings).editingPresentation;
-      if (!privacy) presenceData.state = title;
-    } else if (document.location.pathname.includes("/presentation/u/")) {
+    else if (document.location.pathname.includes("/presentation/u/"))
       presenceData.details = (await strings).browsingPresentation;
-    } else {
-      presenceData.details = (await strings).vieiwngPresentation;
-      if (!privacy) presenceData.state = title;
-    }
+    else presenceData.details = (await strings).vieiwngPresentation;
   }
-  if (presenceData.details == null) {
+
+  if (!privacy) presenceData.state = title;
+
+  if (!presenceData.details) {
     presence.setTrayTitle();
     presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
+  } else presence.setActivity(presenceData);
 });

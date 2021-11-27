@@ -54,11 +54,12 @@ function findChannel(): string {
       for (const channel of rows.children) {
         if (
           !channel.className.includes("desktop") &&
-          (channel.firstElementChild.children[2]
-            .firstElementChild as HTMLImageElement).src.includes("stop.png")
-        ) {
+          (
+            channel.firstElementChild.children[2]
+              .firstElementChild as HTMLImageElement
+          ).src.includes("stop.png")
+        )
           return channel.firstElementChild.id.replace("channel-", "");
-        }
       }
     }
     return "YOU FAILED";
@@ -78,6 +79,7 @@ presence.on("UpdateData", async () => {
     format1 = await presence.getSetting("sFormat1"),
     format2 = await presence.getSetting("sFormat2"),
     format3 = await presence.getSetting("sListeners"),
+    buttons = await presence.getSetting("buttons"),
     logo: number = await presence.getSetting("logo"),
     logoArr = [
       "reywhitebacksmall",
@@ -98,46 +100,55 @@ presence.on("UpdateData", async () => {
   let showFormat3 = false;
 
   if (info) {
-    if (document.location.hostname == "status.reyfm.de") {
+    if (document.location.hostname === "status.reyfm.de")
       presenceData.details = "Viewing status page";
-    } else if (document.location.hostname == "www.reyfm.de") {
+    else if (document.location.hostname === "www.reyfm.de") {
       if (document.location.pathname.includes("/bots")) {
         presenceData.details = "Viewing bots";
+        presenceData.buttons = [
+          {
+            label: "View Bots",
+            url: "https://www.reyfm.de/bots"
+          }
+        ];
       } else if (document.location.pathname.includes("/discord-bot")) {
         presenceData.details = "Viewing the Discord bot";
-      } else if (document.location.pathname.includes("/partner")) {
+        presenceData.buttons = [
+          {
+            label: "View Bot",
+            url: "https://www.reyfm.de/discord-bot"
+          }
+        ];
+      } else if (document.location.pathname.includes("/partner"))
         presenceData.details = "Viewing partners";
-      } else if (document.location.pathname.includes("/stream-urls")) {
+      else if (document.location.pathname.includes("/stream-urls"))
         presenceData.details = "Viewing streams";
-      } else if (document.location.pathname.includes("/apply")) {
+      else if (document.location.pathname.includes("/apply"))
         presenceData.details = "Viewing job postings";
-      } else if (document.location.pathname.includes("/datenschutz")) {
+      else if (document.location.pathname.includes("/datenschutz"))
         presenceData.details = "Reading the datenschutz";
-      } else if (document.location.pathname.includes("/impressum")) {
+      else if (document.location.pathname.includes("/impressum"))
         presenceData.details = "Reading the impressum";
-      } else if (document.location.pathname.includes("/stats")) {
+      else if (document.location.pathname.includes("/stats"))
         presenceData.details = "Viewing the statistics";
-      } else if (document.location.pathname == "/") {
+      else if (document.location.pathname === "/")
         presenceData.details = "Browsing...";
-      }
     }
   }
 
-  if (elapsed) {
-    presenceData.startTimestamp = browsingStamp;
-  }
+  if (elapsed) presenceData.startTimestamp = browsingStamp;
 
   if (
-    document.location.hostname == "www.reyfm.de" &&
-    document.location.pathname == "/"
+    document.location.hostname === "www.reyfm.de" &&
+    document.location.pathname === "/"
   ) {
     if (
       (document.querySelector("#player") as HTMLElement).style.cssText !==
       "display: none;"
     ) {
-      const paused = (document.querySelector(
-        "#miniplayer-play"
-      ) as HTMLImageElement).src.includes("play.png");
+      const paused = (
+        document.querySelector("#miniplayer-play") as HTMLImageElement
+      ).src.includes("play.png");
 
       let track: string, artist: string;
 
@@ -145,8 +156,7 @@ presence.on("UpdateData", async () => {
         const channelID = findChannel();
         if (channelID !== "YOU FAILED") {
           const channel = channels.find((channel) => channel.id === channelID);
-          track = channel.track;
-          artist = channel.artist;
+          ({ track, artist } = channel);
 
           presenceData.smallImageKey = "play";
           presenceData.smallImageText = format3
@@ -155,6 +165,9 @@ presence.on("UpdateData", async () => {
           presenceData.startTimestamp = Date.parse(channel.timeStart);
           presenceData.endTimestamp = Date.parse(channel.timeEnd);
           showFormat3 = true;
+          presenceData.buttons = [
+            { label: "Listen along!", url: `https://reyfm.de/${channel.name}` }
+          ];
         } else {
           artist = document.querySelector(
             "#player > div.wrapper > div.current > span.artist"
@@ -173,7 +186,7 @@ presence.on("UpdateData", async () => {
           "#player > div.wrapper > div.current > span.title"
         ).textContent;
         presenceData.smallImageKey = "pause";
-        presenceData.smallImageText = "Total Listeners: " + totalListeners;
+        presenceData.smallImageText = `Total Listeners: ${totalListeners}`;
         delete presenceData.startTimestamp;
       }
 
@@ -185,16 +198,16 @@ presence.on("UpdateData", async () => {
         .replace("%artist%", artist);
     }
   } else if (
-    document.location.hostname == "www.reyfm.de" &&
+    document.location.hostname === "www.reyfm.de" &&
     document.querySelector("#channel-player") !== null
   ) {
     const channelID = document
         .querySelector("#channel-player")
         .className.replace("shadow channel-color-", ""),
       channel = channels.find((channel) => channel.id === channelID),
-      paused = (document.querySelector(
-        "#play"
-      ) as HTMLImageElement).src.includes("play.png");
+      paused = (
+        document.querySelector("#play") as HTMLImageElement
+      ).src.includes("play.png");
 
     paused
       ? (presenceData.smallImageKey = "pause")
@@ -213,6 +226,8 @@ presence.on("UpdateData", async () => {
 
     showFormat3 = true;
 
+    presenceData.buttons = [{ label: "Listen along!", url: document.URL }];
+
     if (!paused) {
       presenceData.startTimestamp = Date.parse(channel.timeStart);
       presenceData.endTimestamp = Date.parse(channel.timeEnd);
@@ -226,10 +241,10 @@ presence.on("UpdateData", async () => {
     ? presence.showSetting("sListeners")
     : presence.hideSetting("sListeners");
 
-  if (presenceData.details == null) {
+  if (!buttons) delete presenceData.buttons;
+
+  if (!presenceData.details) {
     presence.setTrayTitle();
     presence.setActivity();
-  } else {
-    presence.setActivity(presenceData);
-  }
+  } else presence.setActivity(presenceData);
 });

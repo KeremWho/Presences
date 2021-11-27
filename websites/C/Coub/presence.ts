@@ -23,7 +23,7 @@ function getQuery() {
       queryString && queryString.length > 0 && queryString[1]
         ? queryString[1].split("&").reduce(function (l, r) {
             const entry = r ? r.split("=", 2) : null;
-            if (entry == null) return l;
+            if (entry === null) return l;
             return Object.assign(l, { [entry[0]]: entry[1] });
           }, {})
         : {};
@@ -98,13 +98,12 @@ function getSourceLink(url: string): { label: string; url: string }[] {
             ?.map((x) => x.match(/^pages-(\w+)-page/i))
             .filter((x) => !!x && x.length > 1 && x[1])
             .map((x) => capitalizeFirstLetter(x[1]));
-          data.state =
-            `Browsing ${
-              isCoubPicks && activeTabTitle.match(/^(\w+)/gi)
-                ? activeTabTitle.match(/^(\w+)/gi)[0]
-                : activeTabTitle
-            }` +
-            (pageType?.length > 0 &&
+          data.state = `Browsing ${
+            isCoubPicks && activeTabTitle.match(/^(\w+)/gi)
+              ? activeTabTitle.match(/^(\w+)/gi)[0]
+              : activeTabTitle
+          }${
+            pageType?.length > 0 &&
             activeTabTitle.toLowerCase() !== pageType[0].toLowerCase()
               ? ` in ${pageType[0]}`
               : isWeekly
@@ -113,14 +112,14 @@ function getSourceLink(url: string): { label: string; url: string }[] {
               ? " in Best of the Year"
               : isCoubPicks
               ? " in Coub Picks"
-              : "");
+              : ""
+          }`;
           data.details = `${title}${isLiked ? " (❤)" : ""}`;
           data.smallImageKey = isPlaying ? images.PLAY : images.PAUSE;
           const sourceLink = activeMedia.querySelector<HTMLAnchorElement>(
             ".description__stamp a.description__stamp__source"
           );
-          data.buttons = [];
-          if (showWatch)
+          if (showWatch) {
             data.buttons.push(
               ...[
                 {
@@ -130,13 +129,18 @@ function getSourceLink(url: string): { label: string; url: string }[] {
                 ...getSourceLink(sourceLink?.href)
               ]
             );
+          }
           return data;
         }
       },
       {
         middleware: (ref) =>
           !!ref.document.querySelector(".hero-cover[channel-id]"),
-        exec: (context, data, { showWatch, strings, images }: ExecutionArguments) => {
+        exec: (
+          context,
+          data,
+          { showWatch, strings, images }: ExecutionArguments
+        ) => {
           if (!context) return null;
           const activeMedia = document.querySelector<HTMLElement>(
             ".coub[coub-block].active"
@@ -170,8 +174,7 @@ function getSourceLink(url: string): { label: string; url: string }[] {
           data.state = `Browsing ${activeTabTitle} from ${userName}`;
           data.details = `${title}${isLiked ? " (❤)" : ""}`;
           data.smallImageKey = isPlaying ? images.PLAY : images.PAUSE;
-          data.buttons = [];
-          if (showWatch)
+          if (showWatch) {
             data.buttons.push(
               ...[
                 {
@@ -186,16 +189,20 @@ function getSourceLink(url: string): { label: string; url: string }[] {
                 }
               ]
             );
+          }
           return data;
         }
       },
       {
         middleware: (ref) => !!ref.location.pathname.match(/^\/view\/(.*)/gi),
-        exec: (context, data, { strings, showWatch, images }: ExecutionArguments) => {
+        exec: (
+          context,
+          data,
+          { strings, showWatch, images }: ExecutionArguments
+        ) => {
           if (!context) return null;
-          const activeMedia = document.querySelector<HTMLElement>(
-            ".coub[coub-block]"
-          );
+          const activeMedia =
+            document.querySelector<HTMLElement>(".coub[coub-block]");
           if (!activeMedia) return null;
           const title = activeMedia
               .querySelector(".coub__description h5.description__title")
@@ -209,11 +216,11 @@ function getSourceLink(url: string): { label: string; url: string }[] {
           data.state = strings.watching;
           data.details = `${title}${isLiked ? " (❤)" : ""}`;
           data.smallImageKey = isPlaying ? images.PLAY : images.PAUSE;
-          const sourceLink = activeMedia.parentElement.querySelector<HTMLAnchorElement>(
-            `.coub__info .media-block__item > a[type="embedPopup"]`
-          );
-          data.buttons = [];
-          if (showWatch)
+          const sourceLink =
+            activeMedia.parentElement.querySelector<HTMLAnchorElement>(
+              '.coub__info .media-block__item > a[type="embedPopup"]'
+            );
+          if (showWatch) {
             data.buttons.push(
               ...[
                 {
@@ -223,20 +230,24 @@ function getSourceLink(url: string): { label: string; url: string }[] {
                 ...getSourceLink(sourceLink?.href)
               ]
             );
+          }
           return data;
         }
       },
       {
         middleware: (ref) => !!ref.location.pathname.match(/^\/(community)/gi),
-        exec: (context, data, { showWatch, strings, images }: ExecutionArguments) => {
+        exec: (
+          context,
+          data,
+          { showWatch, strings, images }: ExecutionArguments
+        ) => {
           if (!context) return null;
           const communityParent = document.querySelector(
             ".hot__community[data-community-id]"
           );
           if (!communityParent) return null;
-          const activeMedia = document.querySelector<HTMLElement>(
-            ".coub.active"
-          );
+          const activeMedia =
+            document.querySelector<HTMLElement>(".coub.active");
           if (!activeMedia) return null;
           const communityTitle = communityParent
               .querySelector(".description > .title > h2")
@@ -257,8 +268,7 @@ function getSourceLink(url: string): { label: string; url: string }[] {
           const sourceLink = activeMedia.querySelector<HTMLAnchorElement>(
             ".description__stamp a.description__stamp__source"
           );
-          data.buttons = [];
-          if (showWatch)
+          if (showWatch) {
             data.buttons.push(
               ...[
                 {
@@ -268,6 +278,7 @@ function getSourceLink(url: string): { label: string; url: string }[] {
                 ...getSourceLink(sourceLink?.href)
               ]
             );
+          }
 
           return data;
         }
@@ -312,9 +323,8 @@ function getSourceLink(url: string): { label: string; url: string }[] {
         );
       }
       const presenceData: PresenceData = {
-          largeImageKey: "logo",
-          largeImageText: "Coub"
-        } as PresenceData,
+          largeImageKey: "logo"
+        },
         query: { [key: string]: unknown } = getQuery(),
         context = pages.find((x) => x.middleware(window, [query]));
       if (!context) return false;
@@ -337,11 +347,7 @@ function getSourceLink(url: string): { label: string; url: string }[] {
             largeImageKey: "logo",
             state: localizedStrings.browsing
           });
-        } else {
-          if (data.details) presence.setActivity(data);
-          if (data.buttons && data.buttons.length === 0) delete data.buttons;
-          else data.buttons = data.buttons?.slice(0, 2);
-        }
+        } else if (data.details) presence.setActivity(data);
         return data;
       });
     });
